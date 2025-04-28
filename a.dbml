@@ -1,0 +1,81 @@
+// ERD for Social Platform Database
+// Compatible with dbdiagram.io
+
+Table User {
+  id uuid [pk]
+  username varchar [unique, not null]
+  email varchar [unique, null]
+  walletAddress varchar [unique, null]
+  avatarUrl varchar [null]
+  isPro boolean [default: false]
+  proEnd timestamp [null]
+  rating float [default: 0]
+  ratingCount int [default: 0]
+  createdAt timestamp [default: `now()`]
+  updatedAt timestamp
+}
+
+Table Call {
+  id uuid [pk]
+  initiatorId uuid
+  receiverId uuid
+  durationSec int
+  startedAt timestamp
+  endedAt timestamp
+  ratedByInitiator int [null] // 1 to 5 stars
+  ratedByReceiver int [null] // 1 to 5 stars
+}
+
+Table Text {
+  id uuid [pk]
+  senderId uuid
+  receiverId uuid
+  content text
+  sentAt timestamp [default: `now()`]
+}
+
+Table Friendship {
+  id uuid [pk]
+  userId uuid
+  friendId uuid
+  createdAt timestamp [default: `now()`]
+}
+
+Table Report {
+  id uuid [pk]
+  reporterId uuid
+  reportedUserId uuid
+  reason text
+  createdAt timestamp [default: `now()`]
+}
+
+Table LeaderboardEntry {
+  id uuid [pk]
+  userId uuid
+  date timestamp
+  score float
+  eligible boolean [default: true]
+  
+  indexes {
+    (userId, date) [unique]
+  }
+}
+
+Table Subscription {
+  id uuid [pk]
+  userId uuid
+  plan enum(MONTHLY, YEARLY)
+  startedAt timestamp [default: `now()`]
+  expiresAt timestamp
+}
+
+Ref: Call.initiatorId > User.id //"initiator_calls" 
+Ref: Call.receiverId > User.id // "receiver_calls": 
+Ref: Text.senderId > User.id // "sender_texts": 
+Ref: Text.receiverId > User.id // "receiver_texts": 
+Ref: Friendship.userId > User.id // "user_friends": 
+Ref: Friendship.friendId > User.id // "friend_user": 
+Ref: Report.reporterId > User.id // "reporter": 
+Ref: Report.reportedUserId > User.id // "reported_user": 
+Ref: LeaderboardEntry.userId > User.id // "leaderboard_user": 
+Ref: Subscription.userId > User.id // "subscription_user": 
