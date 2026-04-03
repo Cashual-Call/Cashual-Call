@@ -1,201 +1,148 @@
-# Cashual Call
+# Cashual - Real-Time Social Communication Platform
 
 ## Overview
 
-Cashual Call is a web-based social voice platform where users connect through spontaneous 1-on-1 audio chats and text messaging. Users rate each other after conversations and compete daily to earn rewards in $CASHUAL tokens.
+Cashual is a real-time peer-to-peer communication platform that combines spontaneous voice calls, text chat, friend connections, and a gamified reward system. Users are randomly matched 1-on-1 based on shared interests, can rate each other after conversations, and earn points toward leaderboard rankings and rewards.
 
-The platform offers three user tiers:
-- **Anonymous**: Basic call/text functionality with no login required
-- **Registered**: Full functionality with rewards eligibility (email or wallet login)
-- **Pro**: Premium features including filters and ad-free experience (paid subscription)
+## Quick Links
+
+| Document | Description |
+|----------|-------------|
+| [Architecture](./ARCHITECTURE.md) | System architecture, infrastructure, and deployment |
+| [API Reference](./API.md) | Complete REST API and WebSocket endpoint documentation |
+| [Database Schema](./DATABASE.md) | DBML schema, Mermaid ERD, and model relationships |
+| [Backend](./BACKEND.md) | Backend services, cron jobs, middleware, and business logic |
+| [Frontend](./FRONTEND.md) | Frontend pages, hooks, stores, and providers |
+| [Real-Time Communication](./REALTIME.md) | WebSocket events, matching algorithm, and call/chat flows |
+| [Business Logic](./BUSINESS-LOGIC.md) | Core features, matching, points, subscriptions, and notifications |
 
 ## Tech Stack
 
-### Frontend
-- **Next.js**: React framework for the web application
-- **Solana Wallet Adapter**: For crypto wallet integration
-- **WebRTC**: For real-time voice communication
-
 ### Backend
-- **Express/NestJS**: Backend API framework
-- **PostgreSQL**: Primary database
-- **Redis**: For caching and real-time features
-- **BullMQ**: Job queue for background processing
-- **Socket.IO**: For real-time communication and matchmaking
+- **Runtime**: Bun (TypeScript)
+- **Framework**: Express.js v5 + Socket.IO v4.8
+- **Database**: PostgreSQL 16 (via Prisma ORM)
+- **Cache/Pub-Sub**: Redis 7 (IORedis/Iovalkey)
+- **Auth**: Better-Auth (magic link, OAuth, anonymous)
+- **Payments**: Polar + Helio (Solana)
+- **Email**: Resend (React Email templates)
+- **Queue**: BullMQ
+- **Storage**: AWS S3
+- **Locking**: Redlock (distributed cron coordination)
 
-### Infrastructure & Services
-- **Vercel**: Frontend hosting
-- **S3**: File storage
-- **Resend**: Email notifications
-- **Solana Web3**: Blockchain integration for tokens
+### Frontend
+- **Framework**: Next.js 16 (App Router, React 19)
+- **State**: Zustand (encrypted persistence)
+- **Data Fetching**: TanStack Query
+- **UI**: Tailwind CSS v4 + shadcn/ui + Radix UI
+- **Real-Time**: Socket.IO client + SSE
+- **Wallet**: Solana Wallet Adapter
+- **Forms**: React Hook Form + Zod
 
-## Database Schema
+### Infrastructure
+- **Containers**: Docker Compose (PostgreSQL 16 + Redis 7)
+- **Frontend Hosting**: Vercel
+- **Monitoring**: PostHog analytics, Pino/CloudWatch logging
+- **Admin**: Socket.IO Admin UI, BullMQ Board
 
-![Database Schema](./images/database.png)
+## User Tiers
 
-The database structure is defined in `a.dbml` and includes the following key tables:
-- User
-- Call
-- Text
-- Friendship
-- Report
-- LeaderboardEntry
-- Subscription
+| Tier | Features |
+|------|----------|
+| **Anonymous** | Auto-generated username, basic chat/call, no login required |
+| **Registered** | Full functionality, friend system, leaderboard eligibility, OAuth/magic link |
+| **Pro** | Smart matching filters, ad-free, priority access, pro badge, skip queue, chat/call history |
 
-## Application Flow
+## Pricing
 
-The application flow is visualized in the following diagram:
+| Plan | Price |
+|------|-------|
+| Pro Weekly | $0.99/week |
+| Pro Monthly | $2.99/month |
+| Pro Annually | $29.99/year |
 
-![User Flow](./images/userflow.png)
+## Project Structure
 
-## Core Features
+```
+cashual/
+├── cashual-backend/          # Express + Socket.IO backend (Bun)
+│   ├── prisma/               # Prisma schema & migrations
+│   └── src/
+│       ├── config/           # Logger, Redis, WebSocket config
+│       ├── constants/        # Pricing, enums
+│       ├── controller/       # HTTP + WebSocket request handlers
+│       ├── cron/             # Scheduled jobs (match, heartbeat, subscription)
+│       ├── lib/              # Auth, Prisma, Redis, Polar, Email
+│       ├── middleware/       # Auth, validation, socket middleware
+│       ├── routes/           # Express route definitions
+│       ├── service/          # Business logic services
+│       ├── websocket/        # Socket.IO namespaces (chat, call)
+│       └── index.ts          # Server entry point
+├── cashual-frontend/         # Next.js 16 frontend
+│   └── src/
+│       ├── app/              # App Router pages & layouts
+│       ├── components/       # UI components by feature
+│       ├── constants/        # Config, pricing, interests
+│       ├── hooks/            # Custom React hooks
+│       ├── lib/              # API clients, auth, crypto, utils
+│       ├── provider/         # Context providers
+│       ├── store/            # Zustand state stores
+│       └── validation/       # Zod schemas
+├── strapi/                   # Headless CMS for blog content
+├── docs/                     # This documentation
+└── docker-compose.yaml       # PostgreSQL + Redis containers
+```
 
-### Voice Calls
-- Random 1-on-1 matching
-- Rating system (5-star)
-- In-call messaging
-- Call duration tracking
-
-### Text Messaging
-- Random matches or friend chats
-- Image sharing
-- Blocking/reporting
-
-### Profile System
-- Wallet or email login
-- Rating display
-- Friend management
-
-### Leaderboard & Rewards
-- Daily leaderboard competition
-- Luck-based $7 daily reward
-- Anti-fraud mechanisms
-
-### Pro Subscription
-- Gender/region filters
-- Ad-free experience
-- Pro badge
-- Reconnect with previous matches
-
-## Setup Instructions
+## Getting Started
 
 ### Prerequisites
-- Node.js (v16+)
-- PostgreSQL
-- Redis
-- Solana development tools
-- AWS S3 access
+- Bun (v1.0+)
+- Node.js (v18+)
+- Docker & Docker Compose
+- AWS S3 access (for uploads)
+
+### 1. Start Infrastructure
+
+```bash
+docker-compose up -d
+```
+
+This starts PostgreSQL 16 (port 5432) and Redis 7 (port 6379).
+
+### 2. Backend Setup
+
+```bash
+cd cashual-backend
+cp .env.example .env   # Configure environment variables
+bun install
+bunx prisma migrate dev
+bun run dev
+```
+
+### 3. Frontend Setup
+
+```bash
+cd cashual-frontend
+cp .env.example .env.local   # Configure environment variables
+bun install
+bun run dev
+```
 
 ### Environment Variables
 
-Create a `.env` file with the following variables:
+**Backend (`.env`)**:
+- `PORT` - Server port (default: 8080)
+- `DATABASE_URL` - PostgreSQL connection string
+- `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD` - Redis connection
+- `JWT_SECRET`, `JWT_EXPIRES_IN` - JWT configuration
+- `FRONTEND_URL` - Allowed CORS origin
+- `BETTER_AUTH_SECRET` - Auth encryption secret
+- `GOOGLE_CLIENT_ID/SECRET`, `TWITTER_CLIENT_ID/SECRET`, `DISCORD_CLIENT_ID/SECRET` - OAuth
+- `RESEND_API_KEY` - Email service
+- `POLAR_ACCESS_TOKEN` - Payment processor
+- `AWS_S3_*` - S3 configuration for uploads
 
-```
-# Server
-PORT=3000
-NODE_ENV=development
-
-# Database
-DATABASE_URL=postgres://user:password@localhost:5432/cashual
-
-# Redis
-REDIS_URL=redis://localhost:6379
-
-# Auth
-JWT_SECRET=your_jwt_secret
-SUPABASE_URL=your_supabase_url
-SUPABASE_KEY=your_supabase_key
-
-# Services
-S3_BUCKET=your_s3_bucket
-S3_REGION=your_s3_region
-S3_ACCESS_KEY=your_access_key
-S3_SECRET_KEY=your_secret_key
-RESEND_API_KEY=your_resend_key
-
-# Solana
-SOLANA_RPC_URL=your_solana_rpc
-TREASURY_WALLET=your_treasury_wallet_address
-```
-
-### Installation
-
-1. Clone the repository:
-```bash
-git clone https://github.com/your-org/cashual-call.git
-cd cashual-call
-```
-
-2. Install dependencies:
-```bash
-npm install
-```
-
-3. Set up the database:
-```bash
-npx prisma migrate dev
-```
-
-4. Start development servers:
-```bash
-# Start Redis
-redis-server
-
-# Start backend
-npm run dev:server
-
-# Start frontend
-npm run dev:client
-```
-
-## Development Guidelines
-
-### Code Structure
-- `/pages` - Next.js pages and API routes
-- `/components` - React components
-- `/server` - Express/NestJS backend code
-- `/lib` - Shared utilities
-- `/models` - Data models and types
-- `/styles` - Global styles
-
-### Testing
-Run tests with:
-```bash
-npm test
-```
-
-### Deployment
-
-#### Frontend (Vercel)
-```bash
-vercel --prod
-```
-
-#### Backend
-```bash
-# Build
-npm run build:server
-
-# Start
-npm run start:server
-```
-
-## Anti-Fraud Mechanisms
-
-- Voice activity verification
-- IP/Device matching prevention
-- Minimum call duration for rewards
-- Rating allowed only after 2 minutes
-- Captcha for signup
-
-## Business Model
-
-- Pro subscription ($4.99/month or $39.99/year)
-- Paid in $CASHUAL tokens or USDC
-- 50% of subscription revenue used to burn $CASHUAL tokens
-
-## Future Roadmap
-
-- Casual weeks with special rewards
-- Creator program for Cashual influencers
-- Open spaces (similar to X or Clubhouse)
+**Frontend (`.env.local`)**:
+- `NEXT_PUBLIC_API_URL` - Backend API URL
+- `NEXT_PUBLIC_FRIEND_CHAT_API_URL` - Friend chat API URL
+- `NEXT_PUBLIC_POSTHOG_KEY` - PostHog analytics key

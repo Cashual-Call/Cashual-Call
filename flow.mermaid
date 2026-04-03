@@ -1,23 +1,130 @@
+%% Cashual - Complete User Flow Diagram
+
 flowchart TD
-    A[Landing Page] --> B[1-on-1 Voice Call]
-    A --> C[Text Messages]
-    
-    B --> D[Connect through Real-time 1-on-1 Audio Chats]
-    B --> E[Online Status for Connection]
-    
-    D --> F[Send Texts During Call]
-    D --> G[Ads after Every 10 Skips]
-    
-    C --> H[Text Match with Other Text Users]
-    C --> I[Messaging During/After Call or From Friend List]
-    
-    H --> J[Ads after Every 10 Skips]
-    
-    K[Leaderboard Feature] --> L[Show Top-rated Callers for the Day]
-    K --> M[Leaderboard Resets Daily]
-    
-    L --> N[Daily Leaderboard]
-    L --> O[Daily Lucky Winner]
-    
-    P[Scoring Formula] --> Q[Formula]
-    Q --> R[Total Call Points * Rating Multiplier]
+    A[Landing Page] --> B{User Type?}
+
+    B -->|Anonymous| C[Auto-generated Username]
+    B -->|Login| D[/login Page]
+
+    D --> D1[Google OAuth]
+    D --> D2[Twitter OAuth]
+    D --> D3[Discord OAuth]
+    D --> D4[Magic Link Email]
+    D --> D5[Profile Setup]
+    D5 --> D5a[Choose Avatar]
+    D5 --> D5b[Enter Username]
+    D5 --> D5c[Select Gender]
+    D5 --> D5d[Optional Wallet Address]
+
+    C --> E[Dashboard]
+    D1 --> E
+    D2 --> E
+    D3 --> E
+    D4 --> E
+    D5 --> E
+
+    E --> F{Action?}
+    F -->|Search Chat| G[Chat Matching Queue]
+    F -->|Search Call| H[Call Matching Queue]
+    F -->|Friends| I[Friend Management]
+    F -->|Profile| J[/me Dashboard]
+
+    %% Matching Flow
+    G --> K[Match Cron - Every 3s]
+    H --> K
+    K --> K1[Calculate Interest Scores]
+    K1 --> K2[Greedy Match - Highest Score First]
+    K2 --> K3{Matched?}
+    K3 -->|Yes| L[Create Room + JWT Tokens]
+    K3 -->|No| K4[Random Pair Remaining]
+    K4 --> L
+
+    L --> L1[MATCH_FOUND Notification via SSE]
+    L1 --> M{Type?}
+    M -->|Chat| N[/chat Page]
+    M -->|Call| O[/call Page]
+
+    %% Chat Flow
+    N --> N1[Socket.IO /chat Connect]
+    N1 --> N2[Exchange Messages]
+    N2 --> N3[Heartbeat - Points Every 10 Beats]
+    N2 --> N4[Typing Indicators]
+    N2 --> N5[Send Friend Request]
+    N2 --> N6[Report User]
+    N2 --> N7[End Chat]
+    N7 --> N8[Rate Partner 1-5 Stars]
+
+    %% Call Flow
+    O --> O1[Socket.IO /call Connect]
+    O1 --> O2[WebRTC SDP Exchange]
+    O2 --> O3[ICE Candidates]
+    O3 --> O4[P2P Audio Connected]
+    O4 --> O5[Call Duration Timer]
+    O4 --> O6[Network Quality Monitor]
+    O4 --> O7[In-Call Chat]
+    O4 --> O8[Send Friend Request]
+    O4 --> O9[End Call]
+    O9 --> O10[Rate Partner 1-5 Stars]
+
+    %% Friend System
+    I --> I1[View Friends List]
+    I --> I2[Pending Requests]
+    I --> I3[Friend Suggestions]
+    I1 --> I4[Start Friend Chat]
+    I1 --> I5[Start Friend Call]
+    I1 --> I6[Remove Friend]
+    I2 --> I7[Accept Request]
+    I2 --> I8[Reject Request]
+    I3 --> I9[Send Friend Request]
+
+    %% Profile & Points
+    J --> J1[View Points & Activity Chart]
+    J --> J2[Settings - Profile/Security/Billing]
+    J --> J3[View Rankings]
+
+    %% Leaderboard
+    N8 --> P[Points Aggregated]
+    O10 --> P
+    N3 --> P
+    P --> Q[Daily Leaderboard]
+    Q --> R{Eligible?}
+    R -->|Yes| S[Lucky Winner Drawing]
+    R -->|No| T[Disqualified]
+
+    %% Subscription
+    F -->|Upgrade| U[/pricing Page]
+    U --> U1[Pro Weekly - $0.99]
+    U --> U2[Pro Monthly - $2.99]
+    U --> U3[Pro Annual - $29.99]
+    U1 --> V[Polar/Helio Checkout]
+    U2 --> V
+    U3 --> V
+    V --> V1{Success?}
+    V1 -->|Yes| W[/payment/success]
+    V1 -->|No| X[/payment/failed]
+    W --> W1[isPro = true]
+    W1 --> W2[Pro Features Unlocked]
+    W2 --> W3[Smart Filters]
+    W2 --> W4[Ad-Free]
+    W2 --> W5[Chat/Call History]
+    W2 --> W6[Priority Queue]
+    W2 --> W7[Pro Badge]
+
+    %% Notifications
+    L1 -.-> NA[SSE Connection]
+    I9 -.-> NA
+    I4 -.-> NA
+    NA --> NB[useNotification Hook]
+    NB --> NC{Notification Type}
+    NC -->|MATCH_FOUND| ND[Redirect to Room]
+    NC -->|FRIEND_REQUEST| NE[Toast + Refetch]
+    NC -->|CALL_INCOMING| NF[Call Dialog]
+    NC -->|NEW_MESSAGE| NG[Accept/Decline Alert]
+
+    %% Admin
+    F -->|Admin| AA[/admin Dashboard]
+    AA --> AB[User Management]
+    AA --> AC[Report Review]
+    AA --> AD[Live Statistics]
+    AB --> AE[Ban/Unban Users]
+    AC --> AF[View Reports & Stats]

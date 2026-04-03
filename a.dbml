@@ -1,81 +1,282 @@
-// ERD for Social Platform Database
+// Cashual Database Schema (Updated)
 // Compatible with dbdiagram.io
+// Reflects current Prisma schema
 
 Table User {
-  id uuid [pk]
-  username varchar [unique, not null]
-  email varchar [unique, null]
-  walletAddress varchar [unique, null]
-  avatarUrl varchar [null]
+  id uuid [pk, default: `uuid()`]
+  name varchar [not null]
+  email varchar [unique, not null]
+  username varchar [unique]
+  displayUsername varchar
+  walletAddress varchar
+  gender varchar
+  ipAddress varchar
+  avatarUrl varchar
+  image varchar
+  interests varchar[] [note: 'Array of interest tags']
   isPro boolean [default: false]
-  proEnd timestamp [null]
-  rating float [default: 0]
-  ratingCount int [default: 0]
+  proEnd timestamp [note: 'Pro subscription end date']
+  isBanned boolean [default: false]
+  banned boolean [default: false]
+  banReason varchar
+  banExpires timestamp
+  role varchar [default: 'user']
+  isAnonymous boolean
+  emailVerified boolean [default: false]
   createdAt timestamp [default: `now()`]
   updatedAt timestamp
+
+  Note: 'Core user entity. Supports anonymous, registered, and pro tiers.'
 }
 
 Table Call {
-  id uuid [pk]
-  initiatorId uuid
-  receiverId uuid
-  durationSec int
-  startedAt timestamp
-  endedAt timestamp
-  ratedByInitiator int [null] // 1 to 5 stars
-  ratedByReceiver int [null] // 1 to 5 stars
+  id uuid [pk, default: `uuid()`]
+  initiatorId uuid [not null]
+  receiverId uuid [not null]
+  durationSec int [not null]
+  startedAt timestamp [not null]
+  endedAt timestamp [not null]
+  ratedByInitiator int [null, note: '1-5 stars']
+  ratedByReceiver int [null, note: '1-5 stars']
+
+  Note: 'Voice call records between two users.'
 }
 
 Table Text {
-  id uuid [pk]
-  senderId uuid
-  receiverId uuid
-  content text
+  id uuid [pk, default: `uuid()`]
+  senderId uuid [null, note: 'Nullable for anonymous users']
+  receiverId uuid [null, note: 'Nullable for anonymous users']
+  senderAnonId varchar [not null, note: 'Anonymous tracking ID for sender']
+  receiverAnonId varchar [not null, note: 'Anonymous tracking ID for receiver']
+  content text [not null]
   sentAt timestamp [default: `now()`]
+  roomId uuid [not null]
+
+  Note: 'Chat messages. Dual ID fields support both auth and anonymous users.'
+}
+
+Table Room {
+  id uuid [pk, default: `uuid()`]
+  type RoomType [not null, note: 'CHAT | CALL | VIDEO_CALL']
+  user1Id uuid [note: 'Authenticated user 1']
+  anonUser1Id varchar [note: 'Fallback for anonymous user 1']
+  user2Id uuid [note: 'Authenticated user 2']
+  anonUser2Id varchar [note: 'Fallback for anonymous user 2']
+  createdAt timestamp [default: `now()`]
+  updatedAt timestamp
+
+  indexes {
+    user1Id
+    user2Id
+    anonUser1Id
+    anonUser2Id
+  }
+
+  Note: 'Communication rooms. Each room has 2 participants (auth or anon).'
 }
 
 Table Friendship {
-  id uuid [pk]
-  userId uuid
-  friendId uuid
+  id uuid [pk, default: `uuid()`]
+  userId uuid [not null]
+  friendId uuid [not null]
+  accepted boolean [default: false, note: 'true = confirmed friends']
   createdAt timestamp [default: `now()`]
+
+  indexes {
+    (userId, friendId) [unique]
+  }
+
+  Note: 'Friend requests and accepted friendships. Cascade delete on user removal.'
 }
 
 Table Report {
-  id uuid [pk]
-  reporterId uuid
-  reportedUserId uuid
-  reason text
+  id uuid [pk, default: `uuid()`]
+  reporterId uuid [not null]
+  reportedUserId uuid [not null]
+  reason text [not null]
   createdAt timestamp [default: `now()`]
+
+  Note: 'User abuse reports.'
+}
+
+Table Rating {
+  id uuid [pk, default: `uuid()`]
+  userId uuid [not null, note: 'User giving the rating']
+  ratedUserId uuid [not null, note: 'User being rated']
+  rating int [not null, note: '1-5 stars']
+  createdAt timestamp [default: `now()`]
+
+  Note: 'Post-interaction ratings. Upsert behavior.'
 }
 
 Table LeaderboardEntry {
-  id uuid [pk]
-  userId uuid
-  date timestamp
-  score float
+  id uuid [pk, default: `uuid()`]
+  userId uuid [not null]
+  date timestamp [not null]
+  score float [not null]
   eligible boolean [default: true]
-  
+
   indexes {
     (userId, date) [unique]
   }
+
+  Note: 'Daily leaderboard scores. Resets daily.'
+}
+
+Table LuckyWinnerEntry {
+  id uuid [pk, default: `uuid()`]
+  userId uuid [not null]
+  createdAt timestamp [default: `now()`]
+
+  Note: 'Lucky winner reward pool entries.'
 }
 
 Table Subscription {
-  id uuid [pk]
-  userId uuid
-  plan enum(MONTHLY, YEARLY)
+  id uuid [pk, default: `uuid()`]
+  userId uuid [not null]
+  plan Plan [not null, note: 'MONTHLY | YEARLY']
   startedAt timestamp [default: `now()`]
-  expiresAt timestamp
+  expiresAt timestamp [not null]
+  paymentId varchar [unique]
+
+  Note: 'Pro subscription records. Checked hourly by cron.'
 }
 
-Ref: Call.initiatorId > User.id //"initiator_calls" 
-Ref: Call.receiverId > User.id // "receiver_calls": 
-Ref: Text.senderId > User.id // "sender_texts": 
-Ref: Text.receiverId > User.id // "receiver_texts": 
-Ref: Friendship.userId > User.id // "user_friends": 
-Ref: Friendship.friendId > User.id // "friend_user": 
-Ref: Report.reporterId > User.id // "reporter": 
-Ref: Report.reportedUserId > User.id // "reported_user": 
-Ref: LeaderboardEntry.userId > User.id // "leaderboard_user": 
-Ref: Subscription.userId > User.id // "subscription_user": 
+Table PointActivity {
+  id uuid [pk, default: `uuid()`]
+  userId uuid [not null]
+  point int [not null, note: 'Points earned (can be negative)']
+  createdAt timestamp [default: `now()`]
+
+  Note: 'Points ledger. Each record is a transaction.'
+}
+
+Table Notification {
+  id uuid [pk, default: `uuid()`]
+  userId uuid [not null]
+  type NotificationType [not null]
+  title varchar [not null]
+  message varchar [not null]
+  data json [note: 'Additional notification payload']
+  isSent boolean [default: false]
+  createdAt timestamp [default: `now()`]
+  sentAt timestamp
+  readAt timestamp
+  priority NotificationPriority [default: 'NORMAL']
+
+  indexes {
+    userId
+    createdAt
+  }
+
+  Note: 'Delivered via SSE + Redis pub/sub.'
+}
+
+Table Session {
+  id varchar [pk]
+  expiresAt timestamp [not null]
+  token varchar [unique, not null]
+  ipAddress varchar
+  userAgent varchar
+  userId uuid [not null]
+  impersonatedBy varchar
+  createdAt timestamp [default: `now()`]
+  updatedAt timestamp
+
+  indexes {
+    userId
+  }
+
+  Note: 'Better-Auth sessions. 30-day expiry.'
+}
+
+Table Account {
+  id varchar [pk]
+  accountId varchar [not null]
+  providerId varchar [not null, note: 'google | twitter | discord | credential']
+  userId uuid [not null]
+  accessToken varchar
+  refreshToken varchar
+  idToken varchar
+  accessTokenExpiresAt timestamp
+  refreshTokenExpiresAt timestamp
+  scope varchar
+  password varchar
+  createdAt timestamp [default: `now()`]
+  updatedAt timestamp
+
+  indexes {
+    userId
+  }
+
+  Note: 'OAuth provider accounts linked to users.'
+}
+
+Table Verification {
+  id varchar [pk]
+  identifier varchar [not null]
+  value varchar [not null]
+  expiresAt timestamp [not null]
+  createdAt timestamp [default: `now()`]
+  updatedAt timestamp
+
+  indexes {
+    identifier
+  }
+
+  Note: 'Magic link and email verification tokens.'
+}
+
+// Enums
+
+Enum RoomType {
+  CHAT
+  CALL
+  VIDEO_CALL
+}
+
+Enum Plan {
+  MONTHLY
+  YEARLY
+}
+
+Enum NotificationType {
+  FRIEND_REQUEST
+  FRIEND_ACCEPTED
+  NEW_MESSAGE
+  CALL_INCOMING
+  CALL_MISSED
+  SYSTEM_ANNOUNCEMENT
+  POINTS_EARNED
+  ACHIEVEMENT_UNLOCKED
+  SUBSCRIPTION_EXPIRING
+  SUBSCRIPTION_EXPIRED
+  MATCH_FOUND
+}
+
+Enum NotificationPriority {
+  LOW
+  NORMAL
+  HIGH
+}
+
+// Relationships
+
+Ref: Call.initiatorId > User.id [note: 'initiator_calls']
+Ref: Call.receiverId > User.id [note: 'receiver_calls']
+Ref: Text.senderId > User.id [note: 'sender_texts']
+Ref: Text.receiverId > User.id [note: 'receiver_texts']
+Ref: Text.roomId > Room.id
+Ref: Friendship.userId > User.id [delete: cascade, note: 'user_friends']
+Ref: Friendship.friendId > User.id [delete: cascade, note: 'friend_user']
+Ref: Report.reporterId > User.id [note: 'reporter']
+Ref: Report.reportedUserId > User.id [note: 'reported_user']
+Ref: Rating.userId > User.id [note: 'user_ratings']
+Ref: Rating.ratedUserId > User.id [note: 'rated_user_ratings']
+Ref: LeaderboardEntry.userId > User.id
+Ref: LuckyWinnerEntry.userId > User.id
+Ref: Subscription.userId > User.id
+Ref: PointActivity.userId > User.id
+Ref: Notification.userId > User.id
+Ref: Session.userId > User.id [delete: cascade]
+Ref: Account.userId > User.id [delete: cascade]
